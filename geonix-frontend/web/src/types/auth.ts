@@ -1,0 +1,36 @@
+// Authentication types
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  access: string;
+  refresh: string;
+  user: User;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  full_name: string;
+  role: 'superadmin' | 'orgadmin' | 'employee';
+  organization: string;
+  is_active: boolean;
+  date_joined: string;
+}
+
+export interface AuthState {
+  user: User | null;
+  tokens: {
+    access: string;
+    refresh: string;
+  } | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export interface ProtectedRouteProps {
+  children: React.ReactNode;
+  requiredRoles?: ('superadmin' | 'orgadmin' | 'employee')[];
+}
