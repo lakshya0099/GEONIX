@@ -37,7 +37,7 @@ ALLOWED_HOSTS = [
 CSRF_TRUSTED_ORIGINS = [
     "https://geonix.onrender.com",
     "http://localhost:3000",
-    "https://geonix-beta.vercel.app/",
+    "https://geonix-beta.vercel.app",
 ]
 
 # Application definition
