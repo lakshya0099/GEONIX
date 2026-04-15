@@ -18,6 +18,24 @@ import dj_database_url
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+def load_dotenv_file(env_file_path: Path) -> None:
+    """Load key-value pairs from a local .env file into os.environ."""
+    if not env_file_path.exists():
+        return
+
+    for raw_line in env_file_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key:
+            os.environ.setdefault(key, value)
+
+load_dotenv_file(BASE_DIR / ".env")
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -95,8 +113,16 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///db.sqlite3")
+
+try:
+    DEFAULT_DB = dj_database_url.parse(DATABASE_URL)
+except Exception:
+    # Keep local development usable if DATABASE_URL is missing/malformed.
+    DEFAULT_DB = dj_database_url.parse("sqlite:///db.sqlite3")
+
 DATABASES = {
-    "default": dj_database_url.parse(os.environ.get("DATABASE_URL"))
+    "default": DEFAULT_DB
 }
 
 # Password validation
