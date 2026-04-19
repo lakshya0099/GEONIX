@@ -1,0 +1,475 @@
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAppDispatch } from '@/hooks/useAuth';
+import { register } from '@/store/slices/auth';
+import toast from 'react-hot-toast';
+
+/* ─── design tokens ───────────────────────────────────────────────── */
+const C = {
+  bg0: '#060c18',
+  bg1: '#0a1422',
+  bg2: '#0d1728',
+  border: 'rgba(100,160,255,0.10)',
+  borderFaint: 'rgba(100,160,255,0.07)',
+  teal: '#00c9a7',
+  blue: '#4d9fff',
+  amber: '#ffb347',
+  purple: '#a78bfa',
+  textPrimary: '#e8eef8',
+  textSecondary: '#8aa8d0',
+  textMuted: '#3d5a80',
+  textDim: '#2d4060',
+};
+
+/* ─── star field canvas ───────────────────────────────────────────── */
+function StarField({ width, height }: { width: number; height: number }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const ctx = c.getContext('2d')!;
+    for (let i = 0; i < 140; i++) {
+      const x = Math.random() * width;
+      const y = Math.random() * height;
+      const r = Math.random() * 1.2 + 0.2;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(180,210,255,${Math.random() * 0.35 + 0.05})`;
+      ctx.fill();
+    }
+  }, [width, height]);
+  return <canvas ref={ref} width={width} height={height} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />;
+}
+
+/* ─── shooting stars canvas ───────────────────────────────────────── */
+function ShootingStars({ width, height }: { width: number; height: number }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d')!;
+    interface Meteor { x: number; y: number; vx: number; vy: number; len: number; life: number; maxLife: number; width: number; }
+    const meteors: Meteor[] = [];
+    let frame = 0, raf: number;
+
+    function spawnMeteor() {
+      const angle = Math.PI / 4 + (Math.random() - 0.5) * 0.45;
+      meteors.push({ x: Math.random() * 1.4 - 0.1, y: -0.05, vx: Math.cos(angle) * 0.013, vy: Math.sin(angle) * 0.013, len: Math.random() * 0.13 + 0.06, life: 0, maxLife: Math.random() * 80 + 55, width: Math.random() * 1.4 + 0.5 });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+      if (frame % 58 === 0 && meteors.length < 6) spawnMeteor();
+      for (let i = meteors.length - 1; i >= 0; i--) {
+        const m = meteors[i];
+        const progress = m.life / m.maxLife;
+        const alpha = progress < 0.2 ? progress / 0.2 : progress > 0.8 ? (1 - progress) / 0.2 : 1;
+        const x1 = m.x * width, y1 = m.y * height;
+        const ang = Math.atan2(m.vy, m.vx);
+        const tdx = -m.len * width * Math.cos(ang), tdy = -m.len * height * Math.sin(ang);
+        const grad = ctx.createLinearGradient(x1 + tdx, y1 + tdy, x1, y1);
+        grad.addColorStop(0, 'rgba(100,160,255,0)');
+        grad.addColorStop(0.55, `rgba(160,210,255,${0.38 * alpha})`);
+        grad.addColorStop(1, `rgba(240,248,255,${0.9 * alpha})`);
+        ctx.beginPath(); ctx.moveTo(x1 + tdx, y1 + tdy); ctx.lineTo(x1, y1);
+        ctx.strokeStyle = grad; ctx.lineWidth = m.width; ctx.lineCap = 'round'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(x1, y1, m.width * 0.9, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(220,240,255,${0.85 * alpha})`; ctx.fill();
+        m.x += m.vx; m.y += m.vy; m.life++;
+        if (m.life >= m.maxLife || m.x > 1.2 || m.y > 1.2) meteors.splice(i, 1);
+      }
+      frame++; raf = requestAnimationFrame(draw);
+    }
+    draw();
+    return () => cancelAnimationFrame(raf);
+  }, [width, height]);
+  return <canvas ref={ref} width={width} height={height} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }} />;
+}
+
+/* ─── globe canvas ────────────────────────────────────────────────── */
+function GlobeCanvas({ size = 220 }: { size?: number }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d')!;
+    const R = size / 2 - 8, cx = size / 2, cy = size / 2;
+    let angle = 0, raf: number;
+    const landPaths = [
+      { lat: 51, lon: -1, w: 18, h: 6 }, { lat: 48, lon: 2, w: 12, h: 8 }, { lat: 52, lon: 13, w: 8, h: 6 },
+      { lat: 28, lon: 78, w: 24, h: 22 }, { lat: 35, lon: 105, w: 30, h: 28 }, { lat: 36, lon: 138, w: 12, h: 16 },
+      { lat: 10, lon: 20, w: 50, h: 40 }, { lat: -5, lon: 25, w: 40, h: 36 }, { lat: 40, lon: -98, w: 50, h: 28 },
+      { lat: -10, lon: -55, w: 40, h: 40 }, { lat: -30, lon: 135, w: 40, h: 30 }, { lat: 62, lon: 100, w: 60, h: 16 },
+    ];
+    function project(lat: number, lon: number, rot: number) {
+      const latR = (lat * Math.PI) / 180, lonR = ((lon + rot) * Math.PI) / 180;
+      return { x: cx + R * Math.cos(latR) * Math.sin(lonR), y: cy - R * Math.sin(latR), z: R * Math.cos(latR) * Math.cos(lonR) };
+    }
+    function draw(rot: number) {
+      ctx.clearRect(0, 0, size, size);
+      const g = ctx.createRadialGradient(cx - 36, cy - 36, 12, cx, cy, R);
+      g.addColorStop(0, '#0e2040'); g.addColorStop(0.5, '#081628'); g.addColorStop(1, '#050e1a');
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
+      for (let lat = -80; lat <= 80; lat += 20) {
+        ctx.beginPath(); let f = true;
+        for (let lon = -180; lon <= 180; lon += 3) {
+          const p = project(lat, lon, rot); if (p.z < 0) { f = true; continue; }
+          f ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); f = false;
+        }
+        ctx.strokeStyle = 'rgba(30,80,160,0.16)'; ctx.lineWidth = 0.4; ctx.stroke();
+      }
+      for (const land of landPaths) {
+        const corners = [project(land.lat + land.h / 2, land.lon - land.w / 2, rot), project(land.lat + land.h / 2, land.lon + land.w / 2, rot), project(land.lat - land.h / 2, land.lon + land.w / 2, rot), project(land.lat - land.h / 2, land.lon - land.w / 2, rot)];
+        const avgZ = corners.reduce((s, c) => s + c.z, 0) / 4;
+        if (avgZ < 5) continue;
+        const alpha = Math.min(1, (avgZ - 5) / 40);
+        ctx.beginPath(); ctx.moveTo(corners[0].x, corners[0].y);
+        for (let i = 1; i < 4; i++) ctx.lineTo(corners[i].x, corners[i].y);
+        ctx.closePath(); ctx.fillStyle = `rgba(16,68,140,${0.55 * alpha})`; ctx.strokeStyle = `rgba(30,111,255,${0.22 * alpha})`; ctx.lineWidth = 0.6; ctx.fill(); ctx.stroke();
+      }
+      ctx.restore();
+      const rim = ctx.createRadialGradient(cx, cy, R - 5, cx, cy, R + 3);
+      rim.addColorStop(0, 'rgba(30,111,255,0.0)'); rim.addColorStop(0.7, 'rgba(30,111,255,0.10)'); rim.addColorStop(1, 'rgba(0,201,167,0.30)');
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.strokeStyle = rim; ctx.lineWidth = 4; ctx.stroke();
+    }
+    function loop() { angle += 0.2; draw(angle); raf = requestAnimationFrame(loop); }
+    loop();
+    return () => cancelAnimationFrame(raf);
+  }, [size]);
+  return <canvas ref={ref} width={size} height={size} style={{ borderRadius: '50%', display: 'block' }} />;
+}
+
+/* ─── shared components ───────────────────────────────────────────── */
+function GeonixIcon({ size = 32 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+      <rect width="32" height="32" rx="8" fill="#111c30" />
+      <circle cx="16" cy="16" r="11" stroke="#1e6fff" strokeWidth="1" strokeOpacity="0.45" />
+      <circle cx="16" cy="16" r="6" stroke="#00c9a7" strokeWidth="0.7" strokeOpacity="0.35" />
+      <polygon points="19,4 13,17 16,17 13,28 20,14 16,14" fill="#FFD700" opacity="0.95" />
+    </svg>
+  );
+}
+function GeonixWordmark({ id, width = 118 }: { id: string; width?: number }) {
+  return (
+    <svg width={width} height="20" viewBox="0 0 118 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="118" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#e8eef8" /><stop offset="55%" stopColor="#c8d8f0" /><stop offset="100%" stopColor="#4d9fff" />
+        </linearGradient>
+      </defs>
+      <text x="0" y="16" fontFamily="'Orbitron', monospace" fontWeight="900" fontSize="15" fill={`url(#${id})`} letterSpacing="2">GEO</text>
+      <text x="58" y="16" fontFamily="'Orbitron', monospace" fontWeight="900" fontSize="15" fill="#FFD700" letterSpacing="2">NIX</text>
+    </svg>
+  );
+}
+const IconEye = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+  </svg>
+);
+const IconEyeOff = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+    <line x1="1" y1="1" x2="23" y2="23" />
+  </svg>
+);
+
+/* ─── password strength indicator ────────────────────────────────── */
+function PasswordStrength({ password }: { password: string }) {
+  const checks = [
+    { label: 'At least 8 characters', ok: password.length >= 8 },
+    { label: 'Uppercase letter', ok: /[A-Z]/.test(password) },
+    { label: 'Number', ok: /[0-9]/.test(password) },
+    { label: 'Special character', ok: /[^A-Za-z0-9]/.test(password) },
+  ];
+  const score = checks.filter(c => c.ok).length;
+  const barColor = score <= 1 ? '#ff6b6b' : score === 2 ? C.amber : score === 3 ? C.blue : C.teal;
+  const label = score <= 1 ? 'Weak' : score === 2 ? 'Fair' : score === 3 ? 'Good' : 'Strong';
+
+  if (!password) return null;
+
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div style={{ display: 'flex', gap: 3, marginBottom: 4 }}>
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} style={{ flex: 1, height: 2, borderRadius: 2, background: i <= score ? barColor : C.bg2, transition: 'background 0.3s' }} />
+        ))}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {checks.map(ch => (
+            <span key={ch.label} style={{ fontSize: 10, color: ch.ok ? C.teal : C.textDim, display: 'flex', alignItems: 'center', gap: 3 }}>
+              <span style={{ fontSize: 9 }}>{ch.ok ? '✓' : '○'}</span>{ch.label}
+            </span>
+          ))}
+        </div>
+        <span style={{ fontSize: 10, color: barColor, fontWeight: 500, flexShrink: 0, marginLeft: 8 }}>{label}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── signup page ─────────────────────────────────────────────────── */
+export default function SignupPage() {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [detailedError, setDetailedError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    admin_name: '',
+    admin_email: '',
+    organization_name: '',
+    subdomain: '',
+    password: '',
+    confirm_password: '',
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setDetailedError(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.password !== formData.confirm_password) {
+      setDetailedError('Passwords do not match');
+      return;
+    }
+    setIsLoading(true);
+    setDetailedError(null);
+    try {
+      const result = await dispatch(register(formData));
+      if (register.fulfilled.match(result)) {
+        toast.success('Workspace created! Sign in to get started.');
+        navigate('/login');
+      } else {
+        const errorMsg = (result.payload as string) || 'Registration failed';
+        setDetailedError(errorMsg);
+        toast.error(errorMsg);
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail
+        || error.response?.data?.email?.join(', ')
+        || error.message
+        || 'An unexpected error occurred';
+      setDetailedError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 14px', borderRadius: 8,
+    background: C.bg2, border: `0.5px solid ${C.border}`,
+    color: C.textPrimary, fontSize: 13, outline: 'none',
+    fontFamily: 'inherit',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 11, color: '#4a6a8a', letterSpacing: '0.05em', display: 'block', marginBottom: 6,
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: C.bg0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans','Inter',sans-serif", padding: 16 }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Orbitron:wght@900&display=swap');
+        *{box-sizing:border-box;}
+        input::placeholder{color:#2d4060;}
+        input:focus{border-color:rgba(77,159,255,0.4) !important;}
+        @keyframes rp{0%,100%{opacity:0.4;transform:scale(1)}50%{opacity:1;transform:scale(1.015)}}
+        @keyframes dp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(1.5)}}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes gx-blink{0%,100%{opacity:1}50%{opacity:0.3}}
+        .gx-login-link{color:#4d9fff;text-decoration:none;font-weight:500;transition:color 0.2s;}
+        .gx-login-link:hover{color:#00c9a7;}
+      `}</style>
+
+      <div style={{ width: '100%', maxWidth: 980, display: 'grid', gridTemplateColumns: '1fr 460px', minHeight: 720, borderRadius: 18, overflow: 'hidden', border: `0.5px solid ${C.borderFaint}` }}>
+
+        {/* ── left — globe + branding ── */}
+        <div style={{ background: C.bg0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, position: 'relative', overflow: 'hidden' }}>
+          <StarField width={520} height={720} />
+          <ShootingStars width={520} height={720} />
+
+          {/* globe — slightly smaller to leave room for copy */}
+          <div style={{ position: 'relative', width: 220, height: 220, marginBottom: 28, zIndex: 2 }}>
+            {[14, 28, 42].map((inset, i) => (
+              <div key={inset} style={{ position: 'absolute', inset: -inset, borderRadius: '50%', border: `0.5px solid rgba(30,111,255,${0.12 - i * 0.03})`, animation: `rp 4s ease-in-out infinite ${i * 1.3}s` }} />
+            ))}
+            <GlobeCanvas size={220} />
+            {[
+              { top: 44, left: 154, color: C.teal, shadow: 'rgba(0,201,167,.7)', size: 8, delay: '0s' },
+              { top: 92, left: 28, color: C.blue, shadow: 'rgba(77,159,255,.6)', size: 7, delay: '.6s' },
+              { top: 148, left: 128, color: C.amber, shadow: 'rgba(255,179,71,.5)', size: 7, delay: '1.2s' },
+              { top: 64, left: 96, color: C.purple, shadow: 'rgba(167,139,250,.5)', size: 6, delay: '1.8s' },
+            ].map((d, i) => (
+              <div key={i} style={{ position: 'absolute', width: d.size, height: d.size, borderRadius: '50%', background: d.color, border: `2px solid ${C.bg0}`, top: d.top, left: d.left, boxShadow: `0 0 10px ${d.shadow}`, animation: `dp 2s ease-in-out infinite ${d.delay}` }} />
+            ))}
+          </div>
+
+          {/* brand */}
+          <div style={{ textAlign: 'center', marginBottom: 24, zIndex: 2 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+              <GeonixIcon size={36} />
+              <div>
+                <GeonixWordmark id="gnx-grad-signup-left" width={118} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.teal, animation: 'gx-blink 1.5s ease-in-out infinite' }} />
+                  <span style={{ fontSize: 10, color: C.textDim }}>Live system</span>
+                </div>
+              </div>
+            </div>
+            <p style={{ fontSize: 13, color: C.textSecondary, marginBottom: 6 }}>Start your workspace in seconds</p>
+            <p style={{ fontSize: 11, color: C.textMuted, letterSpacing: '0.06em' }}>Workforce Management · Geo-fencing · Attendance</p>
+          </div>
+
+          {/* benefit cards */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', maxWidth: 320, zIndex: 2 }}>
+            {[
+              { icon: '🌍', title: 'Real-time geo-fencing', desc: 'Define zones, track field teams live', color: C.teal },
+              { icon: '⚡', title: 'Auto check-in / out', desc: 'Zero friction attendance, no manual entry', color: C.blue },
+              { icon: '🔒', title: 'Role-based access', desc: 'Admin, manager & employee tiers built-in', color: C.purple },
+            ].map(b => (
+              <div key={b.title} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(10,20,34,0.7)', border: `0.5px solid rgba(100,160,255,0.08)` }}>
+                <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{b.icon}</span>
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 500, color: b.color, marginBottom: 2 }}>{b.title}</p>
+                  <p style={{ fontSize: 11, color: C.textMuted }}>{b.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── right — signup form ── */}
+        <div style={{ background: C.bg1, borderLeft: `0.5px solid ${C.borderFaint}`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '36px 36px' }}>
+
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            {/* logo + title */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <GeonixIcon size={32} />
+                <GeonixWordmark id="gnx-grad-signup-right" width={100} />
+              </div>
+              <h1 style={{ fontSize: 20, fontWeight: 500, color: C.textPrimary, marginBottom: 4 }}>Create your workspace</h1>
+              <p style={{ fontSize: 12, color: C.textMuted }}>Set up your organisation in Geonix</p>
+            </div>
+
+            {/* error banner */}
+            {detailedError && (
+              <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(255,107,107,0.07)', border: `0.5px solid rgba(255,107,107,0.25)`, display: 'flex', gap: 10 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
+                  <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 500, color: '#ff6b6b', marginBottom: 2 }}>Registration error</p>
+                  <p style={{ fontSize: 11, color: '#c05050' }}>{detailedError}</p>
+                </div>
+              </div>
+            )}
+
+            {/* form */}
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+              <div>
+                <label style={labelStyle}>Full name</label>
+                <input type="text" name="admin_name" value={formData.admin_name} onChange={handleChange} required disabled={isLoading} placeholder="Jane Smith" style={inputStyle} />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Work email</label>
+                <input type="email" name="admin_email" value={formData.admin_email} onChange={handleChange} required disabled={isLoading} placeholder="jane@company.com" style={inputStyle} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={labelStyle}>Organisation name</label>
+                  <input type="text" name="organization_name" value={formData.organization_name} onChange={handleChange} required disabled={isLoading} placeholder="Acme Corp" style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Subdomain</label>
+                  <input type="text" name="subdomain" value={formData.subdomain} onChange={handleChange} required disabled={isLoading} placeholder="acme" style={inputStyle} />
+                </div>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password" value={formData.password} onChange={handleChange}
+                    required disabled={isLoading} placeholder="••••••••"
+                    style={{ ...inputStyle, paddingRight: 40 }}
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} tabIndex={-1}
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted, display: 'flex', alignItems: 'center' }}>
+                    {showPassword ? <IconEyeOff /> : <IconEye />}
+                  </button>
+                </div>
+                <PasswordStrength password={formData.password} />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Confirm password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showConfirm ? 'text' : 'password'}
+                    name="confirm_password" value={formData.confirm_password} onChange={handleChange}
+                    required disabled={isLoading} placeholder="••••••••"
+                    style={{
+                      ...inputStyle, paddingRight: 40,
+                      borderColor: formData.confirm_password && formData.confirm_password !== formData.password ? 'rgba(255,107,107,0.4)' : formData.confirm_password && formData.confirm_password === formData.password ? 'rgba(0,201,167,0.4)' : undefined,
+                    }}
+                  />
+                  <button type="button" onClick={() => setShowConfirm(!showConfirm)} tabIndex={-1}
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted, display: 'flex', alignItems: 'center' }}>
+                    {showConfirm ? <IconEyeOff /> : <IconEye />}
+                  </button>
+                </div>
+                {formData.confirm_password && formData.confirm_password !== formData.password && (
+                  <p style={{ fontSize: 10, color: '#ff6b6b', marginTop: 4 }}>Passwords do not match</p>
+                )}
+                {formData.confirm_password && formData.confirm_password === formData.password && (
+                  <p style={{ fontSize: 10, color: C.teal, marginTop: 4 }}>✓ Passwords match</p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                style={{
+                  width: '100%', padding: '11px', borderRadius: 9, border: 'none', marginTop: 2,
+                  background: isLoading ? C.bg2 : 'linear-gradient(135deg,#1e6fff,#0e9e82)',
+                  color: isLoading ? C.textMuted : '#fff', fontSize: 13, fontWeight: 500,
+                  cursor: isLoading ? 'not-allowed' : 'pointer', letterSpacing: '0.02em',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  fontFamily: 'inherit',
+                }}
+              >
+                {isLoading && <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${C.textMuted}`, borderTopColor: C.blue, animation: 'spin 0.8s linear infinite' }} />}
+                {isLoading ? 'Creating workspace…' : 'Create workspace'}
+              </button>
+            </form>
+          </div>
+
+          {/* ── footer — login route ── */}
+          <div style={{ marginTop: 24, paddingTop: 18, borderTop: `0.5px solid ${C.borderFaint}`, textAlign: 'center' }}>
+            <p style={{ fontSize: 12, color: C.textMuted }}>
+              Already have an account?{' '}
+              <Link to="/login" className="gx-login-link">
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

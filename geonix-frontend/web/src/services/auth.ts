@@ -1,5 +1,5 @@
 import { apiClient } from './api';
-import { LoginCredentials, AuthResponse, User } from '../types/auth';
+import { LoginCredentials, AuthResponse, RegisterCredentials, RegisterResponse, User } from '../types/auth';
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
@@ -11,6 +11,17 @@ export const authService = {
       return response.data;
     } catch (error: any) {
       console.error('Login error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  async register(credentials: RegisterCredentials): Promise<RegisterResponse> {
+    try {
+      const response = await apiClient.getClient().post('/organizations/company-signup/', credentials);
+      // API returns { message: "Organization created successfully" } — no tokens.
+      return response.data;
+    } catch (error: any) {
+      console.error('Register error:', error.response?.data || error.message);
       throw error;
     }
   },

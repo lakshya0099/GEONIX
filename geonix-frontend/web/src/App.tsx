@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { ProtectedRoute } from '@/components/Auth/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import LoginPage from '@/pages/Login';
+import SignupPage from '@/pages/Signup';
 import DashboardPage from '@/pages/Dashboard';
 import GeofencesPage from '@/components/Geofencing/Geofencespage';
 import EmployeesPage from '@/pages/Employeespage';
@@ -15,7 +16,7 @@ function AppLayout() {
     <ProtectedRoute>
       <div style={{ display: 'flex', minHeight: '100vh', background: '#080e1a' }}>
         <Navbar />
-        <main style={{ flex: 1, overflowY: 'auto', background: '#080e1a' }}>
+        <main style={{ flex: 1, overflowY: 'auto', background: '#080e1a', display: 'flex', flexDirection: 'column' }}>
           <Outlet />
         </main>
       </div>
@@ -38,14 +39,15 @@ function App() {
       <Router>
         <Routes>
           {/* Public — no navbar */}
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login"  element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
 
           {/* Protected — all share AppLayout (Navbar + Outlet) */}
           <Route element={<AppLayout />}>
-            <Route path="/dashboard"  element={<DashboardPage />} />
-            <Route path="/geofences"  element={<GeofencesPage />} />
-            <Route path="/employees"  element={<EmployeesPage />} />
-            <Route path="/reports"    element={<ReportsPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/geofences" element={<GeofencesPage />} />
+            <Route path="/employees" element={<EmployeesPage />} />
+            <Route path="/reports"   element={<ReportsPage />} />
           </Route>
 
           {/* Fallback */}

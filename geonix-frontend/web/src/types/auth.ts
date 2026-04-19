@@ -34,3 +34,17 @@ export interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRoles?: ('superadmin' | 'orgadmin' | 'employee')[];
 }
+
+export interface RegisterCredentials {
+  admin_name: string;
+  admin_email: string;
+  organization_name: string;
+  subdomain: string;
+  password: string;
+  confirm_password: string;
+}
+ 
+export interface RegisterResponse {
+  message: string; // "Organization created successfully"
+}
+ 

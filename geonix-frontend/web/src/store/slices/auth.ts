@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authService } from '../../services/auth';
-import { AuthState, LoginCredentials } from '../../types/auth';
+import { AuthState, LoginCredentials, RegisterCredentials } from '../../types/auth';
 
 const initialState: AuthState = {
   user: authService.getStoredUser(),
@@ -19,6 +19,23 @@ export const login = createAsyncThunk(
       return response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.detail || 'Login failed');
+    }
+  }
+);
+
+export const register = createAsyncThunk(
+  'auth/register',
+  async (credentials: RegisterCredentials, { rejectWithValue }) => {
+    try {
+      const response = await authService.register(credentials);
+      return response; // { message: "Organization created successfully" }
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.detail ||
+        error.response?.data?.email?.join(', ') ||
+        error.response?.data?.non_field_errors?.join(', ') ||
+        'Registration failed'
+      );
     }
   }
 );
@@ -71,6 +88,21 @@ const authSlice = createSlice({
         };
       })
       .addCase(login.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Register — API returns { message } only, no tokens.
+    // Auth state is left unchanged; the page navigates to /login on success.
+    builder
+      .addCase(register.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(register.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(register.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });

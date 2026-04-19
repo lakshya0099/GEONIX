@@ -5,3 +5,5 @@ node_modules/
 .env
 dist/
 build/
+create_demo_setup.py
+create_demo_users.py

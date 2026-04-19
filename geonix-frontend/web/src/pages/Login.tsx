@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAuth';
 import { login } from '@/store/slices/auth';
 import toast from 'react-hot-toast';
@@ -104,7 +104,6 @@ function ShootingStars({ width, height }: { width: number; height: number }) {
         ctx.lineCap = 'round';
         ctx.stroke();
 
-        // bright head dot
         ctx.beginPath();
         ctx.arc(x1, y1, m.width * 0.9, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(220,240,255,${0.85 * alpha})`;
@@ -235,7 +234,7 @@ function GlobeCanvas({ size = 280 }: { size?: number }) {
   return <canvas ref={ref} width={size} height={size} style={{ borderRadius: '50%', display: 'block' }} />;
 }
 
-/* ─── shared logo icon (matches navbar exactly) ───────────────────── */
+/* ─── shared logo icon ────────────────────────────────────────────── */
 function GeonixIcon({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
@@ -247,7 +246,7 @@ function GeonixIcon({ size = 32 }: { size?: number }) {
   );
 }
 
-/* ─── shared wordmark SVG (matches navbar exactly) ────────────────── */
+/* ─── shared wordmark SVG ─────────────────────────────────────────── */
 function GeonixWordmark({ id, width = 118 }: { id: string; width?: number }) {
   return (
     <svg width={width} height="20" viewBox="0 0 118 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -349,18 +348,17 @@ export default function LoginPage() {
         @keyframes dp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(1.5)}}
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes gx-blink{0%,100%{opacity:1}50%{opacity:0.3}}
+        .gx-signup-link{color:#4d9fff;text-decoration:none;font-weight:500;transition:color 0.2s;}
+        .gx-signup-link:hover{color:#00c9a7;}
       `}</style>
 
       <div style={{ width: '100%', maxWidth: 940, display: 'grid', gridTemplateColumns: '1fr 400px', minHeight: 680, borderRadius: 18, overflow: 'hidden', border: `0.5px solid ${C.borderFaint}` }}>
 
         {/* ── left — globe + branding ── */}
         <div style={{ background: C.bg0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, position: 'relative', overflow: 'hidden' }}>
-          {/* static star field — painted once */}
           <StarField width={540} height={680} />
-          {/* animated shooting stars — runs on rAF loop */}
           <ShootingStars width={540} height={680} />
 
-          {/* globe */}
           <div style={{ position: 'relative', width: 280, height: 280, marginBottom: 32, zIndex: 2 }}>
             {[18, 36, 54].map((inset, i) => (
               <div key={inset} style={{ position: 'absolute', inset: -inset, borderRadius: '50%', border: `0.5px solid rgba(30,111,255,${0.12 - i * 0.03})`, animation: `rp 4s ease-in-out infinite ${i * 1.3}s` }} />
@@ -383,7 +381,6 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {/* ── brand — now matches navbar exactly ── */}
           <div style={{ textAlign: 'center', marginBottom: 20, zIndex: 2 }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
               <GeonixIcon size={36} />
@@ -398,7 +395,6 @@ export default function LoginPage() {
             <p style={{ fontSize: 11, color: C.textMuted, letterSpacing: '0.06em' }}>Workforce Management · Geo-fencing · Attendance</p>
           </div>
 
-          {/* feature pills */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, justifyContent: 'center', maxWidth: 380, zIndex: 2 }}>
             {[
               { label: 'Real-time geo-fencing', color: C.teal },
@@ -417,142 +413,90 @@ export default function LoginPage() {
         </div>
 
         {/* ── right — login form ── */}
-        <div style={{ background: C.bg1, borderLeft: `0.5px solid ${C.borderFaint}`, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px 36px' }}>
+        <div style={{ background: C.bg1, borderLeft: `0.5px solid ${C.borderFaint}`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '40px 36px' }}>
 
-          {/* ── logo mark + title — matches navbar exactly ── */}
-          <div style={{ marginBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <GeonixIcon size={32} />
-              <GeonixWordmark id="gnx-grad-right" width={100} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            {/* logo + title */}
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <GeonixIcon size={32} />
+                <GeonixWordmark id="gnx-grad-right" width={100} />
+              </div>
+              <h1 style={{ fontSize: 20, fontWeight: 500, color: C.textPrimary, marginBottom: 4 }}>Welcome back</h1>
+              <p style={{ fontSize: 12, color: C.textMuted }}>Sign in to your workspace</p>
             </div>
-            <h1 style={{ fontSize: 20, fontWeight: 500, color: C.textPrimary, marginBottom: 4 }}>Welcome back</h1>
-            <p style={{ fontSize: 12, color: C.textMuted }}>Sign in to your workspace</p>
-          </div>
 
-          {/* error banner */}
-          {detailedError && (
-            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(255,107,107,0.07)', border: `0.5px solid rgba(255,107,107,0.25)`, display: 'flex', gap: 10 }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
-                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
+            {/* error banner */}
+            {detailedError && (
+              <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(255,107,107,0.07)', border: `0.5px solid rgba(255,107,107,0.25)`, display: 'flex', gap: 10 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
+                  <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 500, color: '#ff6b6b', marginBottom: 2 }}>Login error</p>
+                  <p style={{ fontSize: 11, color: '#c05050' }}>{detailedError}</p>
+                </div>
+              </div>
+            )}
+
+            {/* form */}
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <p style={{ fontSize: 11, fontWeight: 500, color: '#ff6b6b', marginBottom: 2 }}>Login error</p>
-                <p style={{ fontSize: 11, color: '#c05050' }}>{detailedError}</p>
-                <details style={{ marginTop: 4 }}>
-                  <summary style={{ fontSize: 10, color: C.textDim, cursor: 'pointer' }}>Debug info</summary>
-                  <p style={{ fontSize: 10, fontFamily: 'monospace', background: 'rgba(255,107,107,0.08)', padding: '4px 8px', borderRadius: 4, marginTop: 4, color: '#c05050' }}>
-                    API: {(import.meta as any).env?.VITE_API_URL || 'http://localhost:8000'}
-                  </p>
-                </details>
-              </div>
-            </div>
-          )}
-
-          {/* form */}
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div>
-              <label style={{ fontSize: 11, color: '#4a6a8a', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Email address</label>
-              <input
-                type="email" name="email" id="email"
-                value={formData.email} onChange={handleChange}
-                required disabled={isLoading}
-                placeholder="you@company.com"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: 11, color: '#4a6a8a', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Password</label>
-              <div style={{ position: 'relative' }}>
+                <label style={{ fontSize: 11, color: '#4a6a8a', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Email address</label>
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password" id="password"
-                  value={formData.password} onChange={handleChange}
+                  type="email" name="email" id="email"
+                  value={formData.email} onChange={handleChange}
                   required disabled={isLoading}
-                  placeholder="••••••••"
-                  style={{ ...inputStyle, paddingRight: 40 }}
+                  placeholder="you@company.com"
+                  style={inputStyle}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  tabIndex={-1}
-                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted, display: 'flex', alignItems: 'center' }}
-                >
-                  {showPassword ? <IconEyeOff /> : <IconEye />}
-                </button>
               </div>
-            </div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              style={{
-                width: '100%', padding: '11px', borderRadius: 9, border: 'none',
-                background: isLoading ? C.bg2 : 'linear-gradient(135deg,#1e6fff,#0e9e82)',
-                color: isLoading ? C.textMuted : '#fff', fontSize: 13, fontWeight: 500,
-                cursor: isLoading ? 'not-allowed' : 'pointer', letterSpacing: '0.02em',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                fontFamily: 'inherit',
-              }}
-            >
-              {isLoading && <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${C.textMuted}`, borderTopColor: C.blue, animation: 'spin 0.8s linear infinite' }} />}
-              {isLoading ? 'Signing in…' : 'Sign in to workspace'}
-            </button>
-          </form>
-
-          {/* divider */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 14px' }}>
-            <div style={{ flex: 1, height: 0.5, background: C.borderFaint }} />
-            <span style={{ fontSize: 10, color: C.textDim, letterSpacing: '0.07em' }}>DEMO ACCESS</span>
-            <div style={{ flex: 1, height: 0.5, background: C.borderFaint }} />
-          </div>
-
-          {/* demo buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[
-              {
-                label: 'Admin workspace', sub: 'Full dashboard · manage all employees',
-                color: C.blue, bg: 'rgba(30,111,255,0.08)', border: 'rgba(77,159,255,0.20)',
-                iconBg: 'rgba(30,111,255,0.18)', onClick: loadDemoAdmin,
-                icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.blue} strokeWidth="1.8" strokeLinecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>,
-              },
-              {
-                label: 'Employee view', sub: 'Check-in · attendance · location',
-                color: C.teal, bg: 'rgba(0,201,167,0.07)', border: 'rgba(0,201,167,0.18)',
-                iconBg: 'rgba(0,201,167,0.14)', onClick: loadDemoEmployee,
-                icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="1.8" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
-              },
-            ].map(btn => (
+              <div>
+                <label style={{ fontSize: 11, color: '#4a6a8a', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password" id="password"
+                    value={formData.password} onChange={handleChange}
+                    required disabled={isLoading}
+                    placeholder="••••••••"
+                    style={{ ...inputStyle, paddingRight: 40 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted, display: 'flex', alignItems: 'center' }}
+                  >
+                    {showPassword ? <IconEyeOff /> : <IconEye />}
+                  </button>
+                </div>
+              </div>
               <button
-                key={btn.label}
-                type="button"
-                onClick={btn.onClick}
-                style={{ padding: '9px 14px', borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, background: btn.bg, border: `0.5px solid ${btn.border}`, color: btn.color, fontFamily: 'inherit', textAlign: 'left' }}
+                type="submit"
+                disabled={isLoading}
+                style={{
+                  width: '100%', padding: '11px', borderRadius: 9, border: 'none',
+                  background: isLoading ? C.bg2 : 'linear-gradient(135deg,#1e6fff,#0e9e82)',
+                  color: isLoading ? C.textMuted : '#fff', fontSize: 13, fontWeight: 500,
+                  cursor: isLoading ? 'not-allowed' : 'pointer', letterSpacing: '0.02em',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  fontFamily: 'inherit',
+                }}
               >
-                <div style={{ width: 24, height: 24, borderRadius: 6, background: btn.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {btn.icon}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div>{btn.label}</div>
-                  <div style={{ fontSize: 10, color: C.textDim, marginTop: 1 }}>{btn.sub}</div>
-                </div>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                {isLoading && <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${C.textMuted}`, borderTopColor: C.blue, animation: 'spin 0.8s linear infinite' }} />}
+                {isLoading ? 'Signing in…' : 'Sign in to workspace'}
               </button>
-            ))}
+            </form>
           </div>
 
-          {/* creds */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 10 }}>
-            {['admin@test.com · testpass123', 'emp@test.com · testpass123'].map((c, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: C.textDim }}>
-                <div style={{ width: 3, height: 3, borderRadius: '50%', background: C.textDim, flexShrink: 0 }} />
-                {c}
-              </div>
-            ))}
-          </div>
-
-          {/* footer */}
-          <div style={{ marginTop: 20, paddingTop: 16, borderTop: `0.5px solid ${C.borderFaint}` }}>
-            <p style={{ fontSize: 10, color: C.textDim, textAlign: 'center', lineHeight: 1.6 }}>
-              Secured with JWT · Multi-tenant isolation · Role-based access
+          {/* ── footer — signup route ── */}
+          <div style={{ marginTop: 28, paddingTop: 20, borderTop: `0.5px solid ${C.borderFaint}`, textAlign: 'center' }}>
+            <p style={{ fontSize: 12, color: C.textMuted }}>
+              Don't have an account?{' '}
+              <Link to="/signup" className="gx-signup-link">
+                Create workspace
+              </Link>
             </p>
           </div>
         </div>

@@ -48,10 +48,11 @@ class LoginView(APIView):
             })
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
+
 class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_serializer_class(self):
         from .serializers import UserSerializer
         return UserSerializer
@@ -60,3 +61,8 @@ class UserViewSet(viewsets.ModelViewSet):
         return User.objects.filter(
             organization=self.request.user.organization
         ).order_by('full_name')
+
+    def perform_create(self, serializer):
+        # Automatically assign the new user to the same organisation
+        # as the admin making the request, so they appear in the list.
+        serializer.save(organization=self.request.user.organization)
